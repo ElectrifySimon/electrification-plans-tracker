@@ -18,9 +18,11 @@ Every entry carries the publisher, publication date, scope, a one-paragraph summ
 
 ## How the password works
 
-`data.enc.json` holds the dataset encrypted with AES-GCM 256. The key is derived from the password with PBKDF2-SHA256, 310,000 iterations, a random salt and a random IV. Nothing renders until the browser decrypts the payload.
+`data.js` holds the dataset as a plain JS global. The entry screen compares a normalised password (lowercase, spaces and hyphens stripped) before rendering the list. No fetch, no WebCrypto, so it works in any browser, including in-app webviews.
 
-This is a client-side gate. The HTML shell is public, and anyone who obtains the password can read the data. It is proportionate for a research tracker of public documents, not for confidential material. If the data ever becomes sensitive, move to a host with server-side auth.
+`antalya2026` is the password. Case, spaces and hyphens are ignored.
+
+This is a share gate, not a security boundary. The dataset is visible in the page source to anyone who looks. Every document in it is public, so that is an accepted trade-off. If the tracker ever holds anything non-public, move it behind Cloudflare Access or a host with server-side auth.
 
 ## Update the data
 
@@ -28,21 +30,21 @@ This is a client-side gate. The HTML shell is public, and anyone who obtains the
 # edit the plaintext dataset (never committed)
 $EDITOR src/data.json
 
-# re-encrypt with the password
-TRACKER_PASSWORD="$(cat ~/.config/electrification-tracker/password)" python3 build.py
+# rebuild the JS dataset
+python3 build.py
 
-git add data.enc.json && git commit -m "update data" && git push
+git add data.js && git commit -m "update data" && git push
 ```
 
-The plaintext `src/data.json` is gitignored on purpose. Only the ciphertext ships.
+`src/data.json` is gitignored; `data.js` is generated from it.
 
 ## Files
 
 | File | Purpose |
 |---|---|
 | `index.html` | The whole app: lock screen, list, filters, detail panel. No dependencies. |
-| `data.enc.json` | Encrypted dataset. |
-| `build.py` | Encrypts `src/data.json` into `data.enc.json`. |
+| `data.js` | Dataset as a JS global. |
+| `build.py` | Regenerates `data.js` from `src/data.json`. |
 | `DESIGN.md` | Design token spec the UI is built from. |
 | `src/data.json` | Plaintext dataset, local only. |
 
