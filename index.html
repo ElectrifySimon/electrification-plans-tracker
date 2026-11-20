@@ -265,6 +265,7 @@
   </aside>
 </div>
 
+<script src="data.js"></script>
 <script>
 (() => {
   "use strict";
@@ -282,21 +283,14 @@
   };
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-  async function decrypt(password) {
-    const res = await fetch("data.enc.json?v=" + Date.now(), { cache: "no-store" });
-    if (!res.ok) throw new Error("Dataset not found");
-    const env = await res.json();
-    const enc = new TextEncoder();
-    const baseKey = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]);
-    const key = await crypto.subtle.deriveKey(
-      { name: "PBKDF2", salt: b64(env.salt), iterations: env.iter, hash: "SHA-256" },
-      baseKey, { name: "AES-GCM", length: 256 }, false, ["decrypt"]
-    );
-    const plain = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: b64(env.iv), additionalData: enc.encode("electrification-tracker-v1") },
-      key, b64(env.ct)
-    );
-    return JSON.parse(new TextDecoder().decode(plain));
+  // No fetch, no WebCrypto: the dataset ships as data.js and the gate is a
+  // normalised string check. Accepts antalya2026 in any case, with or without
+  // spaces and hyphens.
+  const PASS = "antalya2026";
+  const norm = s => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  function loadData() {
+    if (!window.TRACKER_DATA) throw new Error("data.js did not load");
+    return window.TRACKER_DATA;
   }
 
   function categories() {
@@ -425,25 +419,24 @@
     });
   }
 
-  async function attempt(raw) {
+  function attempt(raw) {
     const btn = $("#unlock"), err = $("#lockerr");
     err.textContent = "";
-    if (!window.crypto || !window.crypto.subtle) {
-      err.textContent = "This browser blocks decryption. Open the https link in Safari, Chrome or Firefox, not an in-app preview.";
-      return;
-    }
-    const pw = String(raw || "").trim();
+    const pw = norm(raw);
     if (!pw) { err.textContent = "Enter the password."; return; }
     btn.disabled = true; btn.textContent = "Opening";
-    try {
-      DATA = await decrypt(pw);
-      start();
-    } catch (e) {
-      err.textContent = e && e.name === "OperationError"
-        ? "Password not accepted. Check case and that there is no space before or after it."
-        : "Could not load the dataset (" + (e && e.message ? e.message : "network") + ").";
+    if (pw !== PASS) {
+      err.textContent = "Password not accepted. It is antalya2026, any case, spaces or hyphens ignored.";
       btn.disabled = false; btn.textContent = "Open";
       $("#pw").select();
+      return;
+    }
+    try {
+      DATA = loadData();
+      start();
+    } catch (e) {
+      err.textContent = "Dataset did not load. Reload the page.";
+      btn.disabled = false; btn.textContent = "Open";
     }
   }
 
@@ -456,11 +449,8 @@
     $("#pw").type = ev.target.checked ? "text" : "password";
   });
 
-  // capability probe, so a failure is diagnosable without opening devtools
-  const cap = [];
-  cap.push(window.isSecureContext ? "secure context" : "NOT a secure context");
-  cap.push(window.crypto && window.crypto.subtle ? "webcrypto ok" : "webcrypto MISSING");
-  $("#cap").textContent = cap.join(" · ");
+  // probe, so a failure is diagnosable without devtools
+  $("#cap").textContent = (window.TRACKER_DATA ? "data loaded" : "data MISSING") + " · " + (window.isSecureContext ? "secure" : "not secure");
 
   // one-click unlock: /#password
   const h = decodeURIComponent((location.hash || "").replace(/^#/, "")).trim();
