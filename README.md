@@ -7,7 +7,7 @@ Live: https://electrifysimon.github.io/electrification-plans-tracker/
 
 ## What is in it
 
-18 entries, as of 20 November 2026:
+17 entries, as of 20 November 2026:
 
 - 10 countries with a published 2026 national plan, roadmap or strategy
 - 3 of those are energy access plans (Zambia, Ethiopia, Mozambique)
