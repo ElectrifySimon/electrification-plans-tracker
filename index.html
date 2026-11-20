@@ -34,8 +34,9 @@
 
   /* ---------- lock ---------- */
   #lock{
-    min-height:100svh;display:grid;place-items:center;padding:24px;
+    min-height:100svh;display:grid;place-items:start center;padding:12vh 20px 24px;
   }
+  @media (max-height:620px){ #lock{padding-top:24px} }
   .lockbox{width:100%;max-width:380px}
   .lockbox h1{
     font-family:var(--serif);font-weight:600;font-size:1.6rem;line-height:1.15;
@@ -195,7 +196,7 @@
     <form id="lockform" autocomplete="off">
       <div class="fieldrow">
         <input id="pw" type="password" aria-label="Password" placeholder="Password" autocomplete="current-password"
-               autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="text" required>
+               autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="text" enterkeyhint="go" required>
         <button id="unlock" type="submit">Open</button>
       </div>
       <label class="showpw"><input id="showpw" type="checkbox"> Show password</label>
@@ -419,7 +420,9 @@
     });
   }
 
+  let opened = false;
   function attempt(raw) {
+    if (opened) return;
     const btn = $("#unlock"), err = $("#lockerr");
     err.textContent = "";
     const pw = norm(raw);
@@ -428,11 +431,12 @@
     if (pw !== PASS) {
       err.textContent = "Password not accepted. It is antalya2026, any case, spaces or hyphens ignored.";
       btn.disabled = false; btn.textContent = "Open";
-      $("#pw").select();
+      err.scrollIntoView({ block: "nearest" });
       return;
     }
     try {
       DATA = loadData();
+      opened = true;
       start();
     } catch (e) {
       err.textContent = "Dataset did not load. Reload the page.";
@@ -440,9 +444,21 @@
     }
   }
 
+  const pwField = $("#pw");
+  // unlock the moment the field matches: no tap, no Enter, no keyboard dismissal trap
+  const autoTry = () => { if (norm(pwField.value) === PASS) attempt(pwField.value); };
+  pwField.addEventListener("input", autoTry);
+  pwField.addEventListener("change", autoTry);
+  pwField.addEventListener("keyup", ev => { if (ev.key === "Enter") attempt(pwField.value); });
+
+  $("#unlock").addEventListener("click", ev => {
+    ev.preventDefault();
+    attempt(pwField.value);
+  });
+
   $("#lockform").addEventListener("submit", ev => {
     ev.preventDefault();
-    attempt($("#pw").value);
+    attempt(pwField.value);
   });
 
   $("#showpw").addEventListener("change", ev => {
