@@ -261,21 +261,22 @@
 
   function renderTimeline() {
     const year = 2026;
-    const buckets = Array.from({length:12},()=>[]);
-    DATA.entries.forEach(e => {
-      const [y,m] = e.date.split("-").map(Number);
-      if (y === year) buckets[m-1].push(e);
-      else if (y < year) buckets[0].push(e);
-    });
-    const last = Math.max(2, ...DATA.entries.filter(e=>e.date.startsWith(year)).map(e=>Number(e.date.split("-")[1])));
-    const shown = buckets.slice(0, last);
+    const inYear = DATA.entries.filter(e => e.date.startsWith(year));
+    const months = inYear.map(e => Number(e.date.split("-")[1]));
+    const first = Math.min(...months), last = Math.max(...months);
+    const buckets = Array.from({length: last}, () => []);
+    inYear.forEach(e => buckets[Number(e.date.split("-")[1]) - 1].push(e));
+    const shown = buckets.slice(first - 1, last);
     $("#months").style.gridTemplateColumns = `repeat(${shown.length},1fr)`;
-    $("#months").innerHTML = shown.map((list,i) => `
+    $("#months").innerHTML = shown.map((list, i) => {
+      const m = first - 1 + i;
+      return `
       <div class="month">
         ${list.map(e => `<div class="blk ${cls(e.category)}" title="${esc(e.country)} · ${esc(e.document)}">${esc(e.id.toUpperCase())}</div>`).join("") || `<div class="blk" style="background:transparent;border:1px dashed var(--line);height:14px"></div>`}
-        <div class="mlabel ${i===last-1?"now":""}">${MONTHS[i]}</div>
-      </div>`).join("");
-    const recent = DATA.entries.filter(e => e.date >= "2026-10-01").length;
+        <div class="mlabel ${m === last - 1 ? "now" : ""}">${MONTHS[m]}</div>
+      </div>`;
+    }).join("");
+    const recent = inYear.filter(e => e.date >= "2026-10-01").length;
     $("#tlnote").textContent = `${recent} of ${DATA.entries.length} landed in the final two months`;
   }
 
