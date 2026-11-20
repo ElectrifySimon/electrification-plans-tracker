@@ -18,11 +18,24 @@ Every entry carries the publisher, publication date, scope, a one-paragraph summ
 
 ## How the password works
 
-`data.js` holds the dataset as a plain JS global. The entry screen compares a normalised password (lowercase, spaces and hyphens stripped) before rendering the list. No fetch, no WebCrypto, so it works in any browser, including in-app webviews.
+The live gated page is `gated/index.html`, a **Staticrypt** build: the whole app is encrypted into one self-contained HTML file and decrypted in the page by the password form. Passphrase: `antalya-grid-2026`.
 
-`antalya2026` is the password. Case, spaces and hyphens are ignored.
+Build it in two steps:
 
-This is a share gate, not a security boundary. The dataset is visible in the page source to anyone who looks. Every document in it is public, so that is an accepted trade-off. If the tracker ever holds anything non-public, move it behind Cloudflare Access or a host with server-side auth.
+```bash
+# 1. gate-free single file: inline data.js, drop the lock markup, call start()
+python3 make_dist.py
+
+# 2. encrypt it
+npx -y staticrypt@3.5.4 dist/index.html -p "antalya-grid-2026" -d site --remember false --short
+cp site/index.html gated/index.html
+```
+
+Do not split a gated deployment into `index.html` + `data.js` + a fetch. The second request can fail silently in an in-app webview, and that failure looks exactly like a wrong password. Keep everything in the one document.
+
+`plain.html` is the no-script fallback: every entry, no gate, no JS.
+
+This is a share gate. Staticrypt encrypts the payload, so the passphrase is not stored in the repo, but anyone with the passphrase reads everything. The documents are public; do not put non-public material here.
 
 ## Update the data
 
