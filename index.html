@@ -62,6 +62,7 @@
   .err{color:#8C1D18;font-size:.82rem;margin-top:10px;min-height:1.2em}
   .showpw{display:flex;align-items:center;gap:7px;margin-top:10px;font-size:.78rem;color:var(--muted);cursor:pointer}
   .showpw input{width:auto;accent-color:var(--accent)}
+  .cap{margin-top:14px;font-size:.7rem;color:var(--muted);font-variant-numeric:tabular-nums}
 
   /* ---------- header ---------- */
   header{border-top:3px solid var(--ink);background:var(--paper)}
@@ -199,6 +200,7 @@
       </div>
       <label class="showpw"><input id="showpw" type="checkbox"> Show password</label>
       <div class="err" id="lockerr" role="alert" aria-live="polite"></div>
+      <div class="cap" id="cap"></div>
     </form>
   </div>
 </section>
@@ -423,15 +425,14 @@
     });
   }
 
-  $("#lockform").addEventListener("submit", async ev => {
-    ev.preventDefault();
+  async function attempt(raw) {
     const btn = $("#unlock"), err = $("#lockerr");
     err.textContent = "";
     if (!window.crypto || !window.crypto.subtle) {
       err.textContent = "This browser blocks decryption. Open the https link in Safari, Chrome or Firefox, not an in-app preview.";
       return;
     }
-    const pw = $("#pw").value.trim();
+    const pw = String(raw || "").trim();
     if (!pw) { err.textContent = "Enter the password."; return; }
     btn.disabled = true; btn.textContent = "Opening";
     try {
@@ -444,11 +445,30 @@
       btn.disabled = false; btn.textContent = "Open";
       $("#pw").select();
     }
+  }
+
+  $("#lockform").addEventListener("submit", ev => {
+    ev.preventDefault();
+    attempt($("#pw").value);
   });
 
   $("#showpw").addEventListener("change", ev => {
     $("#pw").type = ev.target.checked ? "text" : "password";
   });
+
+  // capability probe, so a failure is diagnosable without opening devtools
+  const cap = [];
+  cap.push(window.isSecureContext ? "secure context" : "NOT a secure context");
+  cap.push(window.crypto && window.crypto.subtle ? "webcrypto ok" : "webcrypto MISSING");
+  $("#cap").textContent = cap.join(" · ");
+
+  // one-click unlock: /#password
+  const h = decodeURIComponent((location.hash || "").replace(/^#/, "")).trim();
+  if (h) {
+    $("#pw").value = h;
+    history.replaceState(null, "", location.pathname + location.search);
+    attempt(h);
+  }
 })();
 </script>
 </body>
