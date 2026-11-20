@@ -60,6 +60,8 @@
   }
   .ghost:hover{background:var(--surface);color:var(--ink)}
   .err{color:#8C1D18;font-size:.82rem;margin-top:10px;min-height:1.2em}
+  .showpw{display:flex;align-items:center;gap:7px;margin-top:10px;font-size:.78rem;color:var(--muted);cursor:pointer}
+  .showpw input{width:auto;accent-color:var(--accent)}
 
   /* ---------- header ---------- */
   header{border-top:3px solid var(--ink);background:var(--paper)}
@@ -191,9 +193,11 @@
     <p>Tracker of national plans, roadmaps and strategies published in the run-up to COP31. Enter the access password.</p>
     <form id="lockform" autocomplete="off">
       <div class="fieldrow">
-        <input id="pw" type="password" aria-label="Password" placeholder="Password" autocomplete="current-password" required>
+        <input id="pw" type="password" aria-label="Password" placeholder="Password" autocomplete="current-password"
+               autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="text" required>
         <button id="unlock" type="submit">Open</button>
       </div>
+      <label class="showpw"><input id="showpw" type="checkbox"> Show password</label>
       <div class="err" id="lockerr" role="alert" aria-live="polite"></div>
     </form>
   </div>
@@ -277,7 +281,7 @@
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
   async function decrypt(password) {
-    const res = await fetch("data.enc.json", { cache: "no-store" });
+    const res = await fetch("data.enc.json?v=" + Date.now(), { cache: "no-store" });
     if (!res.ok) throw new Error("Dataset not found");
     const env = await res.json();
     const enc = new TextEncoder();
@@ -423,15 +427,27 @@
     ev.preventDefault();
     const btn = $("#unlock"), err = $("#lockerr");
     err.textContent = "";
+    if (!window.crypto || !window.crypto.subtle) {
+      err.textContent = "This browser blocks decryption. Open the https link in Safari, Chrome or Firefox, not an in-app preview.";
+      return;
+    }
+    const pw = $("#pw").value.trim();
+    if (!pw) { err.textContent = "Enter the password."; return; }
     btn.disabled = true; btn.textContent = "Opening";
     try {
-      DATA = await decrypt($("#pw").value);
+      DATA = await decrypt(pw);
       start();
     } catch (e) {
-      err.textContent = "Wrong password, or the dataset could not be read.";
+      err.textContent = e && e.name === "OperationError"
+        ? "Password not accepted. Check case and that there is no space before or after it."
+        : "Could not load the dataset (" + (e && e.message ? e.message : "network") + ").";
       btn.disabled = false; btn.textContent = "Open";
       $("#pw").select();
     }
+  });
+
+  $("#showpw").addEventListener("change", ev => {
+    $("#pw").type = ev.target.checked ? "text" : "password";
   });
 })();
 </script>
