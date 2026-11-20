@@ -408,8 +408,10 @@
   }
 
   function start() {
-    $("#lock").hidden = true;
-    $("#app").hidden = false;
+    const lock = $("#lock");
+    if (lock) lock.hidden = true;
+    const app = $("#app");
+    if (app) app.hidden = false;
     $("#asof").textContent = "as of " + fmtDate(DATA.meta.as_of);
     $("#entrycount").textContent = DATA.entries.length + " entries";
     $("#counts").innerHTML = counts();
@@ -426,6 +428,7 @@
     });
   }
 
+  /* GATE-START */
   let opened = false;
   function attempt(raw) {
     if (opened) return;
@@ -481,6 +484,7 @@
     history.replaceState(null, "", location.pathname + location.search);
     attempt(h);
   }
+  /* GATE-END */
 })();
 </script>
 </body>
